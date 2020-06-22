@@ -10,6 +10,7 @@ namespace JIT_Interpreter
     {
         static void Main(string[] args)
         {
+            //this is practice!!!
             while (true)
                 console(Console.ReadLine());
         }
