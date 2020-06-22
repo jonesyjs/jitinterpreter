@@ -10,7 +10,10 @@ namespace JIT_Interpreter
     {
         static void Main(string[] args)
         {
-            //this is practice!!!
+            //Todo:
+            //1. Clean up code... prop function types
+            //2. Put methods in appropriate classes, when to use extension vs static vs inline functions.
+
             while (true)
                 console(Console.ReadLine());
         }
@@ -65,7 +68,7 @@ namespace JIT_Interpreter
             { (byte ch) => ch == 123, (Lexer lexer) => { return lexer.CreateToken(TokenType.LBRACE); } },
             { (byte ch) => ch == 125, (Lexer lexer) => { return lexer.CreateToken(TokenType.RBRACE); } },
             { (byte ch) => IsDigit(ch), (Lexer lexer) => { return lexer.CreateToken(TokenType.INT); } },
-            { (byte ch) => IsLetter(ch), (Lexer lexer) => { return lexer.CreateToken(LookupIdent(lexer.ReadIdentifier())); } }
+            { (byte ch) => IsLetter(ch), (Lexer lexer) => { return lexer.CreateToken(); } }
         };
 
         public static Token NextToken(this Lexer lexer)
@@ -73,14 +76,16 @@ namespace JIT_Interpreter
             lexer.SkipWhiteSpace();
             Token token;
 
-            try { token = tokens.SingleOrDefault(c => c.Key(lexer.Ch)).Value(lexer); }
-            catch { token = new Token(TokenType.ILLEGAL, string.Empty); }
+            try { token = tokens.Single(c => c.Key(lexer.Ch)).Value(lexer); }
+            catch { token = lexer.CreateToken(); }
 
-            lexer.ReadChar();
+            if (!token.IsKeywordType() && !token.IsIdentityType() && !token.IsIllegalType())
+                lexer.ReadChar();
+
             return token;
         }
 
-        private static Token CreateToken(this Lexer lexer, TokenType type)
+        private static Token CreateToken(this Lexer lexer, TokenType type = TokenType.ILLEGAL)
         {
             var twoCharTokenTypes = new Dictionary<TokenType, TokenType>() 
             {
@@ -97,9 +102,15 @@ namespace JIT_Interpreter
                 return new Token(twoCharTokenTypes[type], Convert.ToChar(ch).ToString() + Convert.ToChar(lexer.Ch).ToString());
             } 
             else if (IsLetter(lexer.Ch))
-                return new Token(type, lexer.ReadIdentifier());
+            {
+                var text = lexer.ReadIdentifier();
+                type = LookupIdent(text);
+                return new Token(type, text);
+            }
             else if (IsDigit(lexer.Ch))
                 return new Token(type, lexer.ReadNumber());
+            else if (type == TokenType.ILLEGAL)
+                return new Token(TokenType.ILLEGAL, string.Empty);
             else
                 return new Token(type, Convert.ToChar(lexer.Ch).ToString());
         }
@@ -112,7 +123,7 @@ namespace JIT_Interpreter
                 lexer.ReadChar();
         }
 
-        private static TokenType LookupIdent(string literal)
+        private static TokenType LookupIdent(string identifier)
         {
             var keywords = new Dictionary<string, TokenType>
             {
@@ -126,7 +137,7 @@ namespace JIT_Interpreter
                 {"null", TokenType.NULL }
             };
 
-            return keywords.ContainsKey(literal) ? keywords[literal] : TokenType.IDENT;
+            return keywords.ContainsKey(identifier) ? keywords[identifier] : TokenType.IDENT;
         }
 
         private static string ReadIdentifier(this Lexer lexer)
@@ -186,22 +197,36 @@ namespace JIT_Interpreter
 
     public class Token
     {
-        public Token(TokenType? type, string literal)
+        public Token(TokenType type, string literal)
         {
             this.Type = type;
             this.Literal = literal;
         }
 
-        public TokenType? Type { get; set; }
+        public TokenType Type { get; set; }
         public string Literal { get; set; }
     };
 
+    public static class TokenExtensions
+    {
+        public static bool IsKeywordType(this Token token)
+        {
+            return (int)token.Type >= 21;
+        }
+        public static bool IsIdentityType(this Token token)
+        {
+            return token.Type.Equals(TokenType.IDENT);
+        }
+        public static bool IsIllegalType(this Token token)
+        {
+            return token.Type.Equals(TokenType.ILLEGAL);
+        }
+    }
+
     public enum TokenType
     {
-        ILLEGAL,
         EOF,
-        IDENT,
-        INT,
+        //single symbol
         ASSIGN,
         PLUS,
         MINUS,
@@ -216,6 +241,16 @@ namespace JIT_Interpreter
         RPAREN,
         LBRACE,
         RBRACE,
+        //two symbol
+        EQ,
+        NOT_EQ,
+        GTEQ,
+        LTEQ,
+        //Identity
+        IDENT,
+        //Illegal
+        ILLEGAL,
+        //Keywords
         FUNCTION,
         LET,
         TRUE,
@@ -223,10 +258,7 @@ namespace JIT_Interpreter
         IF,
         ELSE,
         RETURN,
-        EQ,
-        NOT_EQ,
-        GTEQ,
-        LTEQ,
-        NULL
+        INT,
+        NULL,
     }
 }
