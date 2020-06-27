@@ -11,8 +11,7 @@ namespace JIT_Interpreter
         static void Main(string[] args)
         {
             //Todo:
-            //1. Clean up code... prop function types
-            //2. Put methods in appropriate classes, when to use extension vs static vs inline functions.
+            //1. Next part
 
             while (true)
                 console(Console.ReadLine());
@@ -52,40 +51,40 @@ namespace JIT_Interpreter
     {
         private static Dictionary<Func<byte, bool>, Func<Lexer, Token>> tokens = new Dictionary<Func<byte, bool>, Func<Lexer, Token>>()
         {
-            { (byte ch) => ch == 0, (Lexer lexer) => { return lexer.CreateToken(TokenType.EOF); } },
-            { (byte ch) => ch == 33, (Lexer lexer) => { return lexer.CreateToken(TokenType.BANG); } },
-            { (byte ch) => ch == 40, (Lexer lexer) => { return lexer.CreateToken(TokenType.LPAREN); } },
-            { (byte ch) => ch == 41, (Lexer lexer) => { return lexer.CreateToken(TokenType.RPAREN); } },
-            { (byte ch) => ch == 42, (Lexer lexer) => { return lexer.CreateToken(TokenType.ASTERISK); } },
-            { (byte ch) => ch == 43, (Lexer lexer) => { return lexer.CreateToken(TokenType.PLUS); } },
-            { (byte ch) => ch == 44, (Lexer lexer) => { return lexer.CreateToken(TokenType.COMMA); } },
-            { (byte ch) => ch == 45, (Lexer lexer) => { return lexer.CreateToken(TokenType.MINUS); } },
-            { (byte ch) => ch == 47, (Lexer lexer) => { return lexer.CreateToken(TokenType.SLASH); } },
-            { (byte ch) => ch == 59, (Lexer lexer) => { return lexer.CreateToken(TokenType.SEMICOLON); } },
-            { (byte ch) => ch == 60, (Lexer lexer) => { return lexer.CreateToken(TokenType.LT); } },
-            { (byte ch) => ch == 61, (Lexer lexer) => { return lexer.CreateToken(TokenType.ASSIGN); } },
-            { (byte ch) => ch == 62, (Lexer lexer) => { return lexer.CreateToken(TokenType.GT); } },
-            { (byte ch) => ch == 123, (Lexer lexer) => { return lexer.CreateToken(TokenType.LBRACE); } },
-            { (byte ch) => ch == 125, (Lexer lexer) => { return lexer.CreateToken(TokenType.RBRACE); } },
-            { (byte ch) => IsDigit(ch), (Lexer lexer) => { return lexer.CreateToken(TokenType.INT); } },
-            { (byte ch) => IsLetter(ch), (Lexer lexer) => { return lexer.CreateToken(); } }
+            { (byte ch) => ch == 0, (Lexer lexer) => { return CreateToken(lexer, TokenType.EOF); } },
+            { (byte ch) => ch == 33, (Lexer lexer) => { return CreateToken(lexer, TokenType.BANG); } },
+            { (byte ch) => ch == 40, (Lexer lexer) => { return CreateToken(lexer, TokenType.LPAREN); } },
+            { (byte ch) => ch == 41, (Lexer lexer) => { return CreateToken(lexer, TokenType.RPAREN); } },
+            { (byte ch) => ch == 42, (Lexer lexer) => { return CreateToken(lexer, TokenType.ASTERISK); } },
+            { (byte ch) => ch == 43, (Lexer lexer) => { return CreateToken(lexer, TokenType.PLUS); } },
+            { (byte ch) => ch == 44, (Lexer lexer) => { return CreateToken(lexer, TokenType.COMMA); } },
+            { (byte ch) => ch == 45, (Lexer lexer) => { return CreateToken(lexer, TokenType.MINUS); } },
+            { (byte ch) => ch == 47, (Lexer lexer) => { return CreateToken(lexer, TokenType.SLASH); } },
+            { (byte ch) => ch == 59, (Lexer lexer) => { return CreateToken(lexer, TokenType.SEMICOLON); } },
+            { (byte ch) => ch == 60, (Lexer lexer) => { return CreateToken(lexer, TokenType.LT); } },
+            { (byte ch) => ch == 61, (Lexer lexer) => { return CreateToken(lexer, TokenType.ASSIGN); } },
+            { (byte ch) => ch == 62, (Lexer lexer) => { return CreateToken(lexer, TokenType.GT); } },
+            { (byte ch) => ch == 123, (Lexer lexer) => { return CreateToken(lexer, TokenType.LBRACE); } },
+            { (byte ch) => ch == 125, (Lexer lexer) => { return CreateToken(lexer, TokenType.RBRACE); } },
+            { (byte ch) => IsDigit(ch), (Lexer lexer) => { return CreateToken(lexer, TokenType.INT); } },
+            { (byte ch) => IsLetter(ch), (Lexer lexer) => { return CreateToken(lexer); } }
         };
 
         public static Token NextToken(this Lexer lexer)
         {
-            lexer.SkipWhiteSpace();
+            SkipWhiteSpace(lexer);
             Token token;
 
             try { token = tokens.Single(c => c.Key(lexer.Ch)).Value(lexer); }
-            catch { token = lexer.CreateToken(); }
+            catch { token = CreateToken(lexer); }
 
             if (!token.IsKeywordType() && !token.IsIdentityType() && !token.IsIllegalType())
-                lexer.ReadChar();
+                ReadChar(lexer);
 
             return token;
         }
 
-        private static Token CreateToken(this Lexer lexer, TokenType type = TokenType.ILLEGAL)
+        private static Token CreateToken(Lexer lexer, TokenType type = TokenType.ILLEGAL)
         {
             var twoCharTokenTypes = new Dictionary<TokenType, TokenType>() 
             {
@@ -95,32 +94,76 @@ namespace JIT_Interpreter
                 { TokenType.GT, TokenType.GTEQ }
             };
 
-            if (lexer.IsTwoChar())
+            if (IsTwoChar(lexer))
             {
                 var ch = lexer.Ch;
-                lexer.ReadChar();
+                ReadChar(lexer);
                 return new Token(twoCharTokenTypes[type], Convert.ToChar(ch).ToString() + Convert.ToChar(lexer.Ch).ToString());
             } 
             else if (IsLetter(lexer.Ch))
             {
-                var text = lexer.ReadIdentifier();
+                var text = ReadIdentifier(lexer);
                 type = LookupIdent(text);
                 return new Token(type, text);
             }
             else if (IsDigit(lexer.Ch))
-                return new Token(type, lexer.ReadNumber());
+                return new Token(type, ReadNumber(lexer));
             else if (type == TokenType.ILLEGAL)
                 return new Token(TokenType.ILLEGAL, string.Empty);
             else
                 return new Token(type, Convert.ToChar(lexer.Ch).ToString());
         }
 
-        private static void SkipWhiteSpace(this Lexer lexer)
+        private static void SkipWhiteSpace(Lexer lexer)
         {
             var whitespaceChars = new char[] { ' ', '\t', '\n', '\r' };
 
             while (whitespaceChars.Contains(Convert.ToChar(lexer.Ch)))
-                lexer.ReadChar();
+                ReadChar(lexer);
+        }
+
+        private static string ReadIdentifier(Lexer lexer)
+        {
+            var position = lexer.Position;
+
+            while (IsLetter(lexer.Ch))
+                ReadChar(lexer);
+
+            return lexer.Input.Substring(position, lexer.Position - position);
+        }
+
+        private static string ReadNumber(Lexer lexer)
+        {
+            var position = lexer.Position;
+
+            while (IsDigit(lexer.Ch))
+                ReadChar(lexer);
+
+            return lexer.Input.Substring(position, lexer.Position - position);
+        }
+
+        private static void ReadChar(Lexer lexer)
+        {
+            if (lexer.ReadPosition >= lexer.Input.Length)
+                lexer.Ch = 0;
+            else
+                lexer.Ch = Convert.ToByte(lexer.Input[Convert.ToInt32(lexer.ReadPosition)]);
+
+            lexer.Position = lexer.ReadPosition;
+            lexer.ReadPosition += 1;
+        }
+
+        private static byte PeekChar(Lexer lexer)
+        {
+            if (lexer.ReadPosition >= lexer.Input.Length)
+                return 0;
+            else
+                return Convert.ToByte(lexer.Input[Convert.ToInt32(lexer.ReadPosition)]);
+        }
+
+        private static bool IsTwoChar(Lexer lexer)
+        {
+            return PeekChar(lexer) == '=';
         }
 
         private static TokenType LookupIdent(string identifier)
@@ -140,45 +183,6 @@ namespace JIT_Interpreter
             return keywords.ContainsKey(identifier) ? keywords[identifier] : TokenType.IDENT;
         }
 
-        private static string ReadIdentifier(this Lexer lexer)
-        {
-            var position = lexer.Position;
-
-            while (IsLetter(lexer.Ch))
-                lexer.ReadChar();
-
-            return lexer.Input.Substring(position, lexer.Position - position);
-        }
-
-        private static string ReadNumber(this Lexer lexer)
-        {
-            var position = lexer.Position;
-
-            while (IsDigit(lexer.Ch))
-                lexer.ReadChar();
-
-            return lexer.Input.Substring(position, lexer.Position - position);
-        }
-
-        public static void ReadChar(this Lexer lexer)
-        {
-            if (lexer.ReadPosition >= lexer.Input.Length)
-                lexer.Ch = 0;
-            else
-                lexer.Ch = Convert.ToByte(lexer.Input[Convert.ToInt32(lexer.ReadPosition)]);
-
-            lexer.Position = lexer.ReadPosition;
-            lexer.ReadPosition += 1;
-        }
-
-        public static byte PeekChar(this Lexer lexer)
-        {
-            if (lexer.ReadPosition >= lexer.Input.Length)
-                return 0;
-            else
-                return Convert.ToByte(lexer.Input[Convert.ToInt32(lexer.ReadPosition)]);
-        }
-
         private static bool IsLetter(byte ch)
         {
             return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_';
@@ -187,11 +191,6 @@ namespace JIT_Interpreter
         private static bool IsDigit(byte ch)
         {
             return '0' <= ch && ch <= '9';
-        }
-
-        private static bool IsTwoChar(this Lexer lexer)
-        {
-            return lexer.PeekChar() == '=';
         }
     }
 
