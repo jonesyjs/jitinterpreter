@@ -49,5 +49,11 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Lexer\Tokeniser.csproj">
+      <Project>{a6598b4f-58ad-4b31-946e-b43f9c3526b9}</Project>
+      <Name>Tokeniser</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
