@@ -24,14 +24,14 @@ namespace JIT_Interpreter
             List<Token> tokenList = new List<Token>();
 
             while (lexer.ReadPosition <= input.Length)
-                tokenList.Add(lexer.NextToken());
+                tokenList.Add(lexer.NextToken(lexer));
 
             foreach (var t in tokenList)
                 Console.WriteLine($"Token Type: {t.Type}, Token Value: {t.Literal}");
         }
     }
 
-    public class Lexer
+    public partial class Lexer
     {
         public Lexer(string input, int position = 0, int readPosition = 1)
         {
@@ -47,30 +47,30 @@ namespace JIT_Interpreter
         public byte Ch { get; set; }
     };
 
-    public static class LexerExtensions
+    public partial class Lexer
     {
-        private static Dictionary<Func<byte, bool>, Func<Lexer, Token>> tokens = new Dictionary<Func<byte, bool>, Func<Lexer, Token>>()
+        private Dictionary<Func<byte, bool>, Func<Lexer, Token>> tokens = new Dictionary<Func<byte, bool>, Func<Lexer, Token>>()
         {
-            { (byte ch) => ch == 0, (Lexer lexer) => { return CreateToken(lexer, TokenType.EOF); } },
-            { (byte ch) => ch == 33, (Lexer lexer) => { return CreateToken(lexer, TokenType.BANG); } },
-            { (byte ch) => ch == 40, (Lexer lexer) => { return CreateToken(lexer, TokenType.LPAREN); } },
-            { (byte ch) => ch == 41, (Lexer lexer) => { return CreateToken(lexer, TokenType.RPAREN); } },
-            { (byte ch) => ch == 42, (Lexer lexer) => { return CreateToken(lexer, TokenType.ASTERISK); } },
-            { (byte ch) => ch == 43, (Lexer lexer) => { return CreateToken(lexer, TokenType.PLUS); } },
-            { (byte ch) => ch == 44, (Lexer lexer) => { return CreateToken(lexer, TokenType.COMMA); } },
-            { (byte ch) => ch == 45, (Lexer lexer) => { return CreateToken(lexer, TokenType.MINUS); } },
-            { (byte ch) => ch == 47, (Lexer lexer) => { return CreateToken(lexer, TokenType.SLASH); } },
-            { (byte ch) => ch == 59, (Lexer lexer) => { return CreateToken(lexer, TokenType.SEMICOLON); } },
-            { (byte ch) => ch == 60, (Lexer lexer) => { return CreateToken(lexer, TokenType.LT); } },
-            { (byte ch) => ch == 61, (Lexer lexer) => { return CreateToken(lexer, TokenType.ASSIGN); } },
-            { (byte ch) => ch == 62, (Lexer lexer) => { return CreateToken(lexer, TokenType.GT); } },
-            { (byte ch) => ch == 123, (Lexer lexer) => { return CreateToken(lexer, TokenType.LBRACE); } },
-            { (byte ch) => ch == 125, (Lexer lexer) => { return CreateToken(lexer, TokenType.RBRACE); } },
-            { (byte ch) => IsDigit(ch), (Lexer lexer) => { return CreateToken(lexer, TokenType.INT); } },
-            { (byte ch) => IsLetter(ch), (Lexer lexer) => { return CreateToken(lexer); } }
+            { (byte ch) => ch == 0, (Lexer lexer) => { return lexer.CreateToken(lexer, TokenType.EOF); } },
+            { (byte ch) => ch == 33, (Lexer lexer) => { return lexer.CreateToken(lexer, TokenType.BANG); } },
+            { (byte ch) => ch == 40, (Lexer lexer) => { return lexer.CreateToken(lexer, TokenType.LPAREN); } },
+            { (byte ch) => ch == 41, (Lexer lexer) => { return lexer.CreateToken(lexer, TokenType.RPAREN); } },
+            { (byte ch) => ch == 42, (Lexer lexer) => { return lexer.CreateToken(lexer, TokenType.ASTERISK); } },
+            { (byte ch) => ch == 43, (Lexer lexer) => { return lexer.CreateToken(lexer, TokenType.PLUS); } },
+            { (byte ch) => ch == 44, (Lexer lexer) => { return lexer.CreateToken(lexer, TokenType.COMMA); } },
+            { (byte ch) => ch == 45, (Lexer lexer) => { return lexer.CreateToken(lexer, TokenType.MINUS); } },
+            { (byte ch) => ch == 47, (Lexer lexer) => { return lexer.CreateToken(lexer, TokenType.SLASH); } },
+            { (byte ch) => ch == 59, (Lexer lexer) => { return lexer.CreateToken(lexer, TokenType.SEMICOLON); } },
+            { (byte ch) => ch == 60, (Lexer lexer) => { return lexer.CreateToken(lexer, TokenType.LT); } },
+            { (byte ch) => ch == 61, (Lexer lexer) => { return lexer.CreateToken(lexer, TokenType.ASSIGN); } },
+            { (byte ch) => ch == 62, (Lexer lexer) => { return lexer.CreateToken(lexer, TokenType.GT); } },
+            { (byte ch) => ch == 123, (Lexer lexer) => { return lexer.CreateToken(lexer, TokenType.LBRACE); } },
+            { (byte ch) => ch == 125, (Lexer lexer) => { return lexer.CreateToken(lexer, TokenType.RBRACE); } },
+            { (byte ch) => IsDigit(ch), (Lexer lexer) => { return lexer.CreateToken(lexer, TokenType.INT); } },
+            { (byte ch) => IsLetter(ch), (Lexer lexer) => { return lexer.CreateToken(lexer); } }
         };
 
-        public static Token NextToken(this Lexer lexer)
+        public Token NextToken(Lexer lexer)
         {
             SkipWhiteSpace(lexer);
             Token token;
@@ -78,13 +78,13 @@ namespace JIT_Interpreter
             try { token = tokens.Single(c => c.Key(lexer.Ch)).Value(lexer); }
             catch { token = CreateToken(lexer); }
 
-            if (!token.IsKeywordType() && !token.IsIdentityType() && !token.IsIllegalType())
+            if (!token.IsKeywordType(token.Type) && !token.IsIdentityType(token.Type) && !token.IsIllegalType(token.Type))
                 ReadChar(lexer);
 
             return token;
         }
 
-        private static Token CreateToken(Lexer lexer, TokenType type = TokenType.ILLEGAL)
+        private Token CreateToken(Lexer lexer, TokenType type = TokenType.ILLEGAL)
         {
             var twoCharTokenTypes = new Dictionary<TokenType, TokenType>() 
             {
@@ -194,7 +194,7 @@ namespace JIT_Interpreter
         }
     }
 
-    public class Token
+    public partial class Token
     {
         public Token(TokenType type, string literal)
         {
@@ -206,19 +206,19 @@ namespace JIT_Interpreter
         public string Literal { get; set; }
     };
 
-    public static class TokenExtensions
+    public partial class Token
     {
-        public static bool IsKeywordType(this Token token)
+        public bool IsKeywordType(TokenType tokenType)
         {
-            return (int)token.Type >= 21;
+            return (int)tokenType >= 21;
         }
-        public static bool IsIdentityType(this Token token)
+        public bool IsIdentityType(TokenType tokenType)
         {
-            return token.Type.Equals(TokenType.IDENT);
+            return tokenType.Equals(TokenType.IDENT);
         }
-        public static bool IsIllegalType(this Token token)
+        public bool IsIllegalType(TokenType tokenType)
         {
-            return token.Type.Equals(TokenType.ILLEGAL);
+            return tokenType.Equals(TokenType.ILLEGAL);
         }
     }
 
