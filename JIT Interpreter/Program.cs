@@ -9,7 +9,7 @@ namespace JIT_Interpreter
         static void Main(string[] args)
         {
             //Todo:
-            //1. Parser
+            //Build parser
 
             while (true)
                 console(Console.ReadLine());
@@ -18,16 +18,20 @@ namespace JIT_Interpreter
         static void console(string input)
         {
             var lexer = new Lexer(input);
-
-            List<Token> tokenList = new List<Token>();
-
-            while (lexer.ReadPosition <= input.Length)
-                tokenList.Add(lexer.NextToken(lexer));
-
-            foreach (var t in tokenList)
-                Console.WriteLine($"Token Type: {t.Type}, Token Value: {t.Literal}");
-
             var parser = new Parser(lexer);
+            parser.NextToken(parser);
+            parser.NextToken(parser);
+
+            parser.ParseProgram(parser);
+
+            //List<Token> tokenList = new List<Token>();
+
+            //while (lexer.ReadPosition <= input.Length)
+            //    tokenList.Add(lexer.NextToken(lexer));
+
+            //foreach (var t in tokenList)
+            //    Console.WriteLine($"Token Type: {t.Type}, Token Value: {t.Literal}");
+
 
         }
     }
@@ -51,17 +55,83 @@ namespace JIT_Interpreter
 
         public MyProgram ParseProgram(Parser parser)
         {
-            return null;
+            var program = new MyProgram();
+            program.Statements = new List<Statement>();
+
+            while(parser.CurrentToken.Type != TokenType.EOF)
+            {
+                var stmt = parser.ParseStatement(parser);
+
+                if (stmt != null)
+                {
+                    program.Statements.Add(stmt);
+                }
+                parser.NextToken(parser);
+            }
+
+            return program;
+        }
+
+        public Statement ParseStatement(Parser parser)
+        {
+            switch (parser.CurrentToken.Type)
+            {
+                case TokenType.LET:
+                    return parser.ParseLetStatement(parser);
+                default:
+                    return null;
+            }
+        } 
+
+        public LetStatement ParseLetStatement(Parser parser) {
+            var stmt = new LetStatement(parser.CurrentToken);
+
+            if (!parser.ExpectPeek(parser, TokenType.IDENT))
+                return null;
+
+            stmt.Name = new Identifier(parser.CurrentToken, parser.CurrentToken.Literal);
+
+            if (!parser.ExpectPeek(parser, TokenType.ASSIGN))
+                return null;
+
+            while (!parser.CurrentTokenIs(parser, TokenType.SEMICOLON))
+            {
+                parser.NextToken(parser);
+            }
+
+            return stmt;
+        }
+
+        public bool CurrentTokenIs(Parser parser, TokenType type)
+        {
+            return parser.CurrentToken.Type == type;
+        }
+
+        public bool PeekTokenIs(Parser parser, TokenType type)
+        {
+            return parser.PeekToken.Type == type;
+        }
+
+        public bool ExpectPeek(Parser parser, TokenType type)
+        {
+            if (parser.PeekTokenIs(parser, type))
+            {
+                parser.NextToken(parser);
+                return true;
+            } else
+            {
+                return false;
+            }
         }
     }
 
     public class MyProgram
     {
-        public Statement[] Statements { get; set; }
+        public List<Statement> Statements { get; set; }
 
         public string TokenLiteral(MyProgram program)
         {
-            if (program.Statements.Length > 0)
+            if (program.Statements.Count > 0)
             {
                 return program.Statements[0].Program.TokenLiteral(program);
             }
@@ -72,8 +142,18 @@ namespace JIT_Interpreter
         }
     }
 
-    public class LetStatement
+    public class Statement
     {
+        public MyProgram Program { get; set; }
+    }
+
+    public class LetStatement : Statement
+    {
+        public LetStatement(Token token)
+        {
+            this.Token = token;
+        }
+
         //Let token
         public Token Token { get; set; }
         public Identifier Name { get; set; }
@@ -82,13 +162,13 @@ namespace JIT_Interpreter
 
     public class Identifier
     {
-        public Token token { get; set; }
-        public string value { get; set; }
-    }
-
-    public class Statement
-    {
-        public MyProgram Program { get; set; }
+        public Identifier(Token token, string value)
+        {
+            this.Token = token;
+            this.Value = value;
+        }
+        public Token Token { get; set; }
+        public string Value { get; set; }
     }
 
     public class Expression
