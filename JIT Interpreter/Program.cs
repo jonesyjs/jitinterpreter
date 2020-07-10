@@ -41,11 +41,13 @@ namespace JIT_Interpreter
         public Parser(Lexer lexer)
         {
             this.Lexer = lexer;
+            this.Errors = new List<string>();
         }
 
         public Lexer Lexer { get; set; }
         public Token CurrentToken { get; set; }
         public Token PeekToken { get; set; }
+        public List<string> Errors { get; set; }
 
         public void NextToken(Parser parser)
         {
@@ -78,10 +80,26 @@ namespace JIT_Interpreter
             {
                 case TokenType.LET:
                     return parser.ParseLetStatement(parser);
+                case TokenType.RETURN:
+                    return parser.ParseReturnStatement(parser);
                 default:
                     return null;
             }
         } 
+
+        public ReturnStatement ParseReturnStatement(Parser parser)
+        {
+            var stmt = new ReturnStatement(parser.CurrentToken);
+
+            parser.NextToken(parser);
+
+            while (!parser.CurrentTokenIs(parser, TokenType.SEMICOLON))
+            {
+                parser.NextToken(parser);
+            }
+
+            return stmt;
+        }
 
         public LetStatement ParseLetStatement(Parser parser) {
             var stmt = new LetStatement(parser.CurrentToken);
@@ -120,8 +138,15 @@ namespace JIT_Interpreter
                 return true;
             } else
             {
+                parser.PeekError(parser, type);
                 return false;
             }
+        }
+
+        public void PeekError(Parser parser, TokenType type)
+        {
+            var msg = string.Format($"expected next token to be {type}, got {parser.PeekToken.Type} instead.");
+            parser.Errors.Add(msg);
         }
     }
 
@@ -158,6 +183,28 @@ namespace JIT_Interpreter
         public Token Token { get; set; }
         public Identifier Name { get; set; }
         public Expression Expression { get; set; }
+    }
+
+    public class ReturnStatement : Statement
+    {
+        public ReturnStatement(Token token)
+        {
+            this.Token = token;
+        }
+
+        public Token Token { get; set; }
+        public Expression ReturnValue { get; set; }
+    }
+
+    public class ExpressionStatement : Statement
+    {
+        public ExpressionStatement(Token token)
+        {
+            this.Token = token;
+        }
+
+        public Token Token { get; set; }
+        public Expression ReturnValue { get; set; }
     }
 
     public class Identifier
