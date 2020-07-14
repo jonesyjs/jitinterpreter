@@ -22,7 +22,14 @@ namespace JIT_Interpreter
             parser.NextToken(parser);
             parser.NextToken(parser);
 
-            parser.ParseProgram(parser);
+            var program = parser.ParseProgram(parser);
+            var strings = program.String();
+
+            foreach(var str in strings)
+            {
+                Console.WriteLine(str);
+            }
+            Console.ReadLine();
 
             //List<Token> tokenList = new List<Token>();
 
@@ -148,6 +155,16 @@ namespace JIT_Interpreter
             var msg = string.Format($"expected next token to be {type}, got {parser.PeekToken.Type} instead.");
             parser.Errors.Add(msg);
         }
+
+        public Expression PrefixParseFn()
+        {
+            return null;
+        }
+
+        public Expression InfixParseFn(Expression expression)
+        {
+            return null;
+        }
     }
 
     public class MyProgram
@@ -165,11 +182,25 @@ namespace JIT_Interpreter
                 return "";
             }
         }
+
+        public List<string> String()
+        {
+            var output = new List<string>();
+
+            foreach(var statement in this.Statements)
+            {
+                output.Add(statement.String());
+            }
+
+            return output;
+        }
     }
 
-    public class Statement
+    public abstract class Statement
     {
         public MyProgram Program { get; set; }
+
+        public abstract string String();
     }
 
     public class LetStatement : Statement
@@ -183,6 +214,25 @@ namespace JIT_Interpreter
         public Token Token { get; set; }
         public Identifier Name { get; set; }
         public Expression Expression { get; set; }
+
+        public override string String()
+        {
+            var output = new List<string>();
+
+            output.Add(this.Token.Literal);
+            output.Add(this.Name.String());
+            output.Add("=");
+
+            if (this.Expression != null)
+            {
+                //Expression returnValue;
+                output.Add("returnValue");
+            }
+            
+            output.Add(";");
+
+            return string.Join(" ", output);
+        }
     }
 
     public class ReturnStatement : Statement
@@ -194,6 +244,23 @@ namespace JIT_Interpreter
 
         public Token Token { get; set; }
         public Expression ReturnValue { get; set; }
+
+        public override string String()
+        {
+            var output = new List<string>();
+
+            output.Add(this.Token.Literal + " ");
+
+            if (this.ReturnValue != null)
+            {
+                //return expression value
+                //output.Add();
+            }
+
+            output.Add(";");
+
+            return string.Join(" ", output);
+        }
     }
 
     public class ExpressionStatement : Statement
@@ -205,6 +272,17 @@ namespace JIT_Interpreter
 
         public Token Token { get; set; }
         public Expression ReturnValue { get; set; }
+
+        public override string String()
+        {
+            //expression value
+            if (this.ReturnValue != null)
+            {
+                return this.ReturnValue.String();
+            }
+
+            return "";
+        }
     }
 
     public class Identifier
@@ -216,10 +294,15 @@ namespace JIT_Interpreter
         }
         public Token Token { get; set; }
         public string Value { get; set; }
+
+        public string String()
+        {
+            return this.Value;
+        }
     }
 
     public class Expression
     {
-
+        
     }
 }
