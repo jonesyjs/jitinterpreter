@@ -9,7 +9,7 @@ namespace JIT_Interpreter
         static void Main(string[] args)
         {
             //Todo:
-            //Build parser
+            //Pg 58
 
             while (true)
                 console(Console.ReadLine());
@@ -45,10 +45,25 @@ namespace JIT_Interpreter
 
     public class Parser
     {
+        private Dictionary<TokenType, Func<Expression, Expression>> InfixParseFns;
+        private Dictionary<TokenType, Func<Expression>> PrefixParseFns;
         public Parser(Lexer lexer)
         {
             this.Lexer = lexer;
             this.Errors = new List<string>();
+
+            this.PrefixParseFns = new Dictionary<TokenType, Func<Expression>>();
+            this.RegisterPrefix(TokenType.IDENT, this.ParseIdentifier);
+
+        }
+        public void RegisterPrefix(TokenType type, Func<Expression> prefixParseFn)
+        {
+            this.PrefixParseFns.Add(type, prefixParseFn);
+        }
+
+        public Expression ParseIdentifier()
+        {
+            return new Expression(new Identifier(this.CurrentToken, this.CurrentToken.Literal));
         }
 
         public Lexer Lexer { get; set; }
@@ -90,7 +105,7 @@ namespace JIT_Interpreter
                 case TokenType.RETURN:
                     return parser.ParseReturnStatement(parser);
                 default:
-                    return null;
+                    return parser.ParseExpressionStatement(parser);
             }
         } 
 
@@ -127,6 +142,45 @@ namespace JIT_Interpreter
             return stmt;
         }
 
+        public ExpressionStatement ParseExpressionStatement(Parser parser)
+        {
+            var stmt = new ExpressionStatement(parser.CurrentToken);
+
+            stmt.ReturnValue = parser.ParseExpression(Precedences.LOWEST);
+
+            if (parser.PeekTokenIs(parser, TokenType.SEMICOLON))
+            {
+                parser.NextToken(parser);
+            }
+
+            return stmt;
+        }
+
+        public enum Precedences {
+            LOWEST,
+            EQUALS,
+            LESSGREATER,
+            SUM,
+            PRODUCT,
+            PREFIX,
+            CALL
+        }
+        public Expression ParseExpression(Precedences precedence)
+        {
+            var prefix = this.PrefixParseFns[this.CurrentToken.Type];
+
+            if (prefix == null)
+            {
+                return null;
+            }
+
+            var leftExp = prefix();
+
+            return leftExp;
+        }
+
+        
+
         public bool CurrentTokenIs(Parser parser, TokenType type)
         {
             return parser.CurrentToken.Type == type;
@@ -161,9 +215,16 @@ namespace JIT_Interpreter
             return null;
         }
 
+        
+
         public Expression InfixParseFn(Expression expression)
         {
             return null;
+        }
+
+        public void RegisterInfix(TokenType type, Func<Expression, Expression> infixParseFn)
+        {
+            this.InfixParseFns.Add(type, infixParseFn);
         }
     }
 
@@ -278,7 +339,7 @@ namespace JIT_Interpreter
             //expression value
             if (this.ReturnValue != null)
             {
-                return this.ReturnValue.String();
+                return "";
             }
 
             return "";
@@ -303,6 +364,10 @@ namespace JIT_Interpreter
 
     public class Expression
     {
-        
+        public Expression(Identifier identifier)
+        {
+            this.Identifier = identifier;
+        } 
+        public Identifier Identifier { get; set; }
     }
 }
